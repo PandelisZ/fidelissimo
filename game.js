@@ -453,7 +453,7 @@ class Level {
     
     // Starting grid cell
     let mapX = Math.floor(origin.x);
-    let mapY = Math.floor(origin.y);
+    let mapY = Math.floor(origin.z);
     
     // Length of ray from current position to next x or y-side
     let sideDistX, sideDistY;
@@ -470,12 +470,12 @@ class Level {
       sideDistX = (mapX + 1.0 - origin.x) * deltaDistX;
     }
     
-    if (rayDir.y < 0) {
+    if (rayDir.z < 0) {
       stepY = -1;
-      sideDistY = (origin.y - mapY) * deltaDistY;
+      sideDistY = (origin.z - mapY) * deltaDistY;
     } else {
       stepY = 1;
-      sideDistY = (mapY + 1.0 - origin.y) * deltaDistY;
+      sideDistY = (mapY + 1.0 - origin.z) * deltaDistY;
     }
     
     // Perform DDA
@@ -509,7 +509,7 @@ class Level {
       // Calculate exact hit point
       let wallX;
       if (side === 0) {
-        wallX = origin.y + distance * rayDir.y;
+        wallX = origin.z + distance * rayDir.z;
       } else {
         wallX = origin.x + distance * rayDir.x;
       }
@@ -568,6 +568,10 @@ class Enemy extends Entity {
     this.patrolTimer = 0;
     this.patrolDirection = new Vector3(Math.random() - 0.5, 0, Math.random() - 0.5).normalize();
     this.detectionRange = 5.0;
+    this.attackDamage = 10;
+    this.attackRange = 1.0;
+    this.attackCooldown = 1.0;
+    this.lastAttackTime = 0;
   }
   
   update(deltaTime, player, level) {
@@ -604,9 +608,13 @@ class Enemy extends Entity {
         this.position = nextPos;
       }
       
-      // Attack if close enough
-      if (distToPlayer < 1.0) {
-        player.takeDamage(10 * deltaTime);
+      // Attack if close enough and cooldown has passed
+      if (distToPlayer < this.attackRange) {
+        const currentTime = performance.now() / 1000;
+        if (currentTime - this.lastAttackTime > this.attackCooldown) {
+          player.takeDamage(this.attackDamage);
+          this.lastAttackTime = currentTime;
+        }
       }
     } else if (this.state === 'patrol') {
       // Patrol behavior

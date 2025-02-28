@@ -3,94 +3,289 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script defer src="/_vercel/insights/script.js"></script>
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/@exampledev/new.css@1.1.2/new.min.css"
-    />
-    <title>Vercel HTML Starter</title>
-    <meta
-      name="description"
-      content="High-performance HTML based website template."
-    />
+    <title>Castro's Revolution - FPS Game</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        overflow: hidden;
+        background-color: #000;
+      }
+      canvas {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+        cursor: none;
+      }
+      #game-ui {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        color: #fff;
+        font-family: 'Courier New', monospace;
+        font-size: 18px;
+        user-select: none;
+      }
+      #crosshair {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: #fff;
+        font-size: 24px;
+        user-select: none;
+      }
+      #loading {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: #000;
+        color: #fff;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        font-family: 'Courier New', monospace;
+        z-index: 1000;
+      }
+      #loading h1 {
+        font-size: 36px;
+        margin-bottom: 20px;
+      }
+      #loading p {
+        font-size: 18px;
+      }
+    </style>
   </head>
   <body>
-    <h1>Vercel HTML Starter</h1>
-    <p>
-      This template is a simple, but powerful single
-      <code>index.html</code> file deployed to
-      <a href="https://vercel.com">Vercel</a>. When your site is deployed, all
-      static assets (like HTML, JavaScript, CSS, images, and more) are deployed
-      globally to every
-      <a href="https://vercel.com/docs/concepts/edge-network/overview"
-        >Vercel Edge Network</a
-      >
-      region.
-    </p>
-    <h2>Simple, privacy-friendly analytics</h2>
-    <p>
-      Want to understand your visitor traffic? Vercel Analytics gives you
-      first-party, privacy-friendly traffic analytics for your HTML site. This
-      template is already configured using the following script:
-    </p>
-    <pre><code>&lt;script defer src="/_vercel/insights/script.js"&gt;&lt;/script&gt;</code></pre>
-    <p>
-      Learn more about
-      <a href="https://vercel.com/analytics">Vercel Analytics</a>.
-    </p>
-    <h2>Integrated with git</h2>
-    <p>
-      Deploying updates to your site is as simple as
-      <code>git push</code> thanks to Vercel's advanced
-      <a href="https://vercel.com/docs/concepts/git">Git Integration</a>.
-      Support for GitHub, GitLab, Bitbucket is zero-configuration, and with the
-      flexible Vercel CLI and API, you can integrate with any tool possible.
-    </p>
-    <p>
-      Learn more about
-      <a href="https://vercel.com/docs/concepts/git">Git Integration</a>.
-    </p>
-    <h2>Fast <code>gzip</code> compression</h2>
-    <p>
-      To help ensure the smallest possible file sizes for your static assets,
-      the Vercel Edge Network compresses files by default using
-      <code>gzip</code>. You can also optionally use
-      <code>brotli</code> compressesion if you prefer.
-    </p>
-    <p>
-      Learn more about
-      <a href="https://vercel.com/docs/concepts/edge-network/compression"
-        >compression</a
-      >.
-    </p>
-    <h2>Advanced routing configuration</h2>
-    <p>
-      Vercel gives you a variety of ways to configure the routing of your
-      website. For example, adding redirects, rewrites, or headers to your page.
-      While you can use <code>vercel.json</code> to define these through JSON,
-      you can also express your routing configuration as code using
-      <a href="https://vercel.com/docs/concepts/functions/edge-middleware"
-        >Vercel Edge Middleware</a
-      >.
-    </p>
-    <p>
-      Middleware runs before the
-      <a href="https://vercel.com/docs/concepts/edge-network/caching"
-        >Vercel Edge Network Cache</a
-      >, so you can configure routing exactly as your application needs. For
-      example, this template uses <code>middleware.js</code> defined in the root
-      of the repository to add additional security headers to the site:
-    </p>
-    <pre><code>referrer-policy: origin-when-cross-origin
-strict-transport-security: max-age=31536000; includeSubDomains; preload
-x-content-type-options: nosniff
-x-dns-prefetch-control: on
-x-frame-options: DENY</code></pre>
-    <p>
-      Learn more about
-      <a href="https://vercel.com/docs/concepts/functions/edge-middleware"
-        >Vercel Edge Middleware</a
-      >.
-    </p>
+    <div id="loading">
+      <h1>Castro's Revolution</h1>
+      <p>Loading game assets...</p>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+    <div id="crosshair">+</div>
+    <div id="game-ui">
+      <div id="health">Health: 100</div>
+      <div id="ammo">Ammo: 30</div>
+    </div>
+    
+    <script>
+      // Game engine
+      document.addEventListener('DOMContentLoaded', () => {
+        // Constants
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const loadingScreen = document.getElementById('loading');
+        
+        // Resize canvas to full window
+        function resizeCanvas() {
+          canvas.width = window.innerWidth;
+          canvas.height = window.innerHeight;
+        }
+        
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        
+        // Lock pointer for FPS controls
+        canvas.addEventListener('click', () => {
+          canvas.requestPointerLock = canvas.requestPointerLock || canvas.mozRequestPointerLock;
+          canvas.requestPointerLock();
+        });
+        
+        // Game state
+        const game = {
+          player: {
+            x: 0,
+            y: 0,
+            z: 0,
+            rotX: 0,
+            rotY: 0,
+            speed: 0.1,
+            health: 100,
+            ammo: 30
+          },
+          keys: {},
+          enemies: [],
+          map: [],
+          textures: {},
+          isLoading: true
+        };
+        
+        // Input handling
+        document.addEventListener('keydown', (e) => game.keys[e.code] = true);
+        document.addEventListener('keyup', (e) => game.keys[e.code] = false);
+        document.addEventListener('mousemove', (e) => {
+          if (document.pointerLockElement === canvas) {
+            game.player.rotY += e.movementX * 0.002;
+            game.player.rotX = Math.max(-Math.PI/2, Math.min(Math.PI/2, game.player.rotX - e.movementY * 0.002));
+          }
+        });
+        
+        // Create 3D world
+        function initWorld() {
+          // Simple cubic world similar to Minecraft
+          for(let x = -10; x < 10; x++) {
+            for(let z = -10; z < 10; z++) {
+              if(Math.random() < 0.1) {
+                game.map.push({
+                  x: x,
+                  y: 0,
+                  z: z,
+                  type: 'wall'
+                });
+              }
+            }
+          }
+          
+          // Add enemies
+          for(let i = 0; i < 5; i++) {
+            game.enemies.push({
+              x: Math.random() * 20 - 10,
+              y: 0,
+              z: Math.random() * 20 - 10,
+              health: 100,
+              state: 'patrol'
+            });
+          }
+          
+          // Position player
+          game.player.x = 0;
+          game.player.y = 1.7; // Eye height
+          game.player.z = 0;
+          
+          // Loading complete
+          game.isLoading = false;
+          loadingScreen.style.display = 'none';
+        }
+        
+        // Move player based on input
+        function handleMovement() {
+          const forward = new Vector3(
+            Math.sin(game.player.rotY),
+            0,
+            Math.cos(game.player.rotY)
+          );
+          const right = new Vector3(
+            Math.sin(game.player.rotY + Math.PI/2),
+            0,
+            Math.cos(game.player.rotY + Math.PI/2)
+          );
+          
+          if (game.keys['KeyW']) {
+            game.player.x += forward.x * game.player.speed;
+            game.player.z += forward.z * game.player.speed;
+          }
+          if (game.keys['KeyS']) {
+            game.player.x -= forward.x * game.player.speed;
+            game.player.z -= forward.z * game.player.speed;
+          }
+          if (game.keys['KeyA']) {
+            game.player.x -= right.x * game.player.speed;
+            game.player.z -= right.z * game.player.speed;
+          }
+          if (game.keys['KeyD']) {
+            game.player.x += right.x * game.player.speed;
+            game.player.z += right.z * game.player.speed;
+          }
+          if (game.keys['Space']) {
+            // Jump logic would go here
+          }
+        }
+        
+        // Render the scene
+        function render() {
+          // Clear canvas
+          ctx.fillStyle = '#87CEEB'; // Sky color
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          
+          // Draw floor
+          ctx.fillStyle = '#8B4513'; // Brown
+          ctx.fillRect(0, canvas.height/2, canvas.width, canvas.height/2);
+          
+          // Render world objects using raycasting
+          for (let x = 0; x < canvas.width; x++) {
+            const rayDirX = Math.sin(game.player.rotY) + (2 * x / canvas.width - 1) * Math.cos(game.player.rotY);
+            const rayDirZ = Math.cos(game.player.rotY) - (2 * x / canvas.width - 1) * Math.sin(game.player.rotY);
+            
+            // Simple column rendering for walls
+            let hit = false;
+            let distance = 0;
+            
+            while (!hit && distance < 20) {
+              distance += 0.1;
+              const testX = game.player.x + rayDirX * distance;
+              const testZ = game.player.z + rayDirZ * distance;
+              
+              // Check if ray hit a wall
+              for (const wall of game.map) {
+                if (testX > wall.x - 0.5 && testX < wall.x + 0.5 &&
+                    testZ > wall.z - 0.5 && testZ < wall.z + 0.5) {
+                  hit = true;
+                  break;
+                }
+              }
+            }
+            
+            if (hit) {
+              // Calculate wall height based on distance
+              const wallHeight = canvas.height / distance * 0.5;
+              ctx.fillStyle = `rgba(0, 128, 0, ${1 - distance/20})`;
+              ctx.fillRect(x, canvas.height/2 - wallHeight/2, 1, wallHeight);
+            }
+          }
+          
+          // Render enemies
+          for (const enemy of game.enemies) {
+            // Calculate direction to enemy
+            const dx = enemy.x - game.player.x;
+            const dz = enemy.z - game.player.z;
+            const distance = Math.sqrt(dx*dx + dz*dz);
+            
+            // Only render if in front of player
+            const angle = Math.atan2(dx, dz) - game.player.rotY;
+            if (Math.abs(angle) < Math.PI/4 && distance < 10) {
+              // Convert 3D position to screen position
+              const screenX = canvas.width/2 + (Math.tan(angle) * canvas.width);
+              const size = canvas.height / distance * 1.2;
+              
+              // Draw enemy sprite (placeholder rectangle)
+              ctx.fillStyle = 'red';
+              ctx.fillRect(screenX - size/2, canvas.height/2 - size, size, size * 2);
+            }
+          }
+          
+          // Update UI
+          document.getElementById('health').textContent = `Health: ${game.player.health}`;
+          document.getElementById('ammo').textContent = `Ammo: ${game.player.ammo}`;
+        }
+        
+        // Simple vector class
+        class Vector3 {
+          constructor(x, y, z) {
+            this.x = x || 0;
+            this.y = y || 0;
+            this.z = z || 0;
+          }
+        }
+        
+        // Main game loop
+        function gameLoop() {
+          if (!game.isLoading) {
+            handleMovement();
+            render();
+          }
+          requestAnimationFrame(gameLoop);
+        }
+        
+        // Start the game
+        initWorld();
+        gameLoop();
+      });
+    </script>
   </body>
 </html>

@@ -3,94 +3,246 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script defer src="/_vercel/insights/script.js"></script>
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/@exampledev/new.css@1.1.2/new.min.css"
-    />
-    <title>Vercel HTML Starter</title>
-    <meta
-      name="description"
-      content="High-performance HTML based website template."
-    />
+    <title>Castro's Revolution - FPS Game</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        overflow: hidden;
+        background-color: #000;
+      }
+      canvas {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+        cursor: none;
+      }
+      #game-ui {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        color: #fff;
+        font-family: 'Courier New', monospace;
+        font-size: 18px;
+        user-select: none;
+      }
+      #crosshair {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: #fff;
+        font-size: 24px;
+        user-select: none;
+      }
+      #loading {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: #000;
+        color: #fff;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        font-family: 'Courier New', monospace;
+        z-index: 1000;
+      }
+      #loading h1 {
+        font-size: 36px;
+        margin-bottom: 20px;
+      }
+      #loading p {
+        font-size: 18px;
+      }
+      #joystickContainer {
+        position: absolute;
+        bottom: 120px;
+        left: 50px;
+        width: 150px;
+        height: 150px;
+        z-index: 100;
+        touch-action: none;
+      }
+      #joystickBase {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        user-select: none;
+      }
+      #joystickHandle {
+        position: absolute;
+        width: 50px;
+        height: 50px;
+        background-color: rgba(255, 255, 255, 0.5);
+        border-radius: 50%;
+        user-select: none;
+      }
+      #mobileControls {
+        display: none;
+      }
+      #actionButtons {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        z-index: 100;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      #shootButton, #jumpButton {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        text-align: center;
+        line-height: 70px;
+        font-size: 30px;
+        margin-bottom: 10px;
+        user-select: none;
+      }
+      #shootButton {
+        background-color: rgba(255, 0, 0, 0.4);
+      }
+      #jumpButton {
+        background-color: rgba(0, 255, 0, 0.4);
+      }
+      @media only screen and (max-width: 768px) {
+        #mobileControls {
+          display: block;
+        }
+      }
+    </style>
   </head>
   <body>
-    <h1>Vercel HTML Starter</h1>
-    <p>
-      This template is a simple, but powerful single
-      <code>index.html</code> file deployed to
-      <a href="https://vercel.com">Vercel</a>. When your site is deployed, all
-      static assets (like HTML, JavaScript, CSS, images, and more) are deployed
-      globally to every
-      <a href="https://vercel.com/docs/concepts/edge-network/overview"
-        >Vercel Edge Network</a
-      >
-      region.
-    </p>
-    <h2>Simple, privacy-friendly analytics</h2>
-    <p>
-      Want to understand your visitor traffic? Vercel Analytics gives you
-      first-party, privacy-friendly traffic analytics for your HTML site. This
-      template is already configured using the following script:
-    </p>
-    <pre><code>&lt;script defer src="/_vercel/insights/script.js"&gt;&lt;/script&gt;</code></pre>
-    <p>
-      Learn more about
-      <a href="https://vercel.com/analytics">Vercel Analytics</a>.
-    </p>
-    <h2>Integrated with git</h2>
-    <p>
-      Deploying updates to your site is as simple as
-      <code>git push</code> thanks to Vercel's advanced
-      <a href="https://vercel.com/docs/concepts/git">Git Integration</a>.
-      Support for GitHub, GitLab, Bitbucket is zero-configuration, and with the
-      flexible Vercel CLI and API, you can integrate with any tool possible.
-    </p>
-    <p>
-      Learn more about
-      <a href="https://vercel.com/docs/concepts/git">Git Integration</a>.
-    </p>
-    <h2>Fast <code>gzip</code> compression</h2>
-    <p>
-      To help ensure the smallest possible file sizes for your static assets,
-      the Vercel Edge Network compresses files by default using
-      <code>gzip</code>. You can also optionally use
-      <code>brotli</code> compressesion if you prefer.
-    </p>
-    <p>
-      Learn more about
-      <a href="https://vercel.com/docs/concepts/edge-network/compression"
-        >compression</a
-      >.
-    </p>
-    <h2>Advanced routing configuration</h2>
-    <p>
-      Vercel gives you a variety of ways to configure the routing of your
-      website. For example, adding redirects, rewrites, or headers to your page.
-      While you can use <code>vercel.json</code> to define these through JSON,
-      you can also express your routing configuration as code using
-      <a href="https://vercel.com/docs/concepts/functions/edge-middleware"
-        >Vercel Edge Middleware</a
-      >.
-    </p>
-    <p>
-      Middleware runs before the
-      <a href="https://vercel.com/docs/concepts/edge-network/caching"
-        >Vercel Edge Network Cache</a
-      >, so you can configure routing exactly as your application needs. For
-      example, this template uses <code>middleware.js</code> defined in the root
-      of the repository to add additional security headers to the site:
-    </p>
-    <pre><code>referrer-policy: origin-when-cross-origin
-strict-transport-security: max-age=31536000; includeSubDomains; preload
-x-content-type-options: nosniff
-x-dns-prefetch-control: on
-x-frame-options: DENY</code></pre>
-    <p>
-      Learn more about
-      <a href="https://vercel.com/docs/concepts/functions/edge-middleware"
-        >Vercel Edge Middleware</a
-      >.
-    </p>
+    <div id="loading">
+      <h1>Castro's Revolution</h1>
+      <p>Loading game assets... <span id="loadingProgress">0%</span></p>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+    <div id="crosshair">+</div>
+    <div id="game-ui">
+      <div id="health">Health: 100</div>
+      <div id="ammo">Ammo: 30</div>
+    </div>
+    
+    <div id="mobileControls">
+      <div id="joystickContainer">
+        <div id="joystickBase">
+          <div id="joystickHandle"></div>
+        </div>
+      </div>
+      <div id="moveUp">▲</div>
+      <div id="moveDown">▼</div>
+      <div id="moveLeft">◀</div>
+      <div id="moveRight">▶</div>
+    </div>
+    
+    <div id="actionButtons">
+      <div id="shootButton">🔫</div>
+      <div id="jumpButton">↑</div>
+    </div>
+    
+    <script>
+      // Check if mobile and display controls
+      document.addEventListener('DOMContentLoaded', function() {
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if (isMobile) {
+          document.getElementById('mobileControls').style.display = 'block';
+          setupJoystick();
+        }
+
+        // Initialize joystick functionality
+        function setupJoystick() {
+          const joystickBase = document.getElementById('joystickBase');
+          const joystickHandle = document.getElementById('joystickHandle');
+          let isDragging = false;
+          let startX, startY, currentX, currentY;
+          
+          // Center the handle initially
+          const baseRect = joystickBase.getBoundingClientRect();
+          const handleRect = joystickHandle.getBoundingClientRect();
+          
+          joystickHandle.style.left = (baseRect.width - handleRect.width) / 2 + 'px';
+          joystickHandle.style.top = (baseRect.height - handleRect.height) / 2 + 'px';
+          
+          // Touch start
+          joystickBase.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = joystickBase.getBoundingClientRect();
+            
+            startX = rect.left + rect.width / 2;
+            startY = rect.top + rect.height / 2;
+            currentX = touch.clientX;
+            currentY = touch.clientY;
+            
+            isDragging = true;
+            updateJoystickPosition();
+          });
+          
+          // Touch move
+          document.addEventListener('touchmove', function(e) {
+            if (!isDragging) return;
+            e.preventDefault();
+            
+            const touch = e.touches[0];
+            currentX = touch.clientX;
+            currentY = touch.clientY;
+            
+            updateJoystickPosition();
+          }, { passive: false });
+          
+          // Touch end
+          document.addEventListener('touchend', function(e) {
+            if (!isDragging) return;
+            isDragging = false;
+            
+            // Reset handle position
+            joystickHandle.style.left = (baseRect.width - handleRect.width) / 2 + 'px';
+            joystickHandle.style.top = (baseRect.height - handleRect.height) / 2 + 'px';
+            
+            // Reset movement values
+            window.joystickDeltaX = 0;
+            window.joystickDeltaY = 0;
+          });
+          
+          function updateJoystickPosition() {
+            // Calculate distance from center
+            let deltaX = currentX - startX;
+            let deltaY = currentY - startY;
+            
+            // Limit to joystick radius
+            const maxRadius = baseRect.width / 2 - handleRect.width / 2;
+            const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+            
+            if (distance > maxRadius) {
+              const ratio = maxRadius / distance;
+              deltaX *= ratio;
+              deltaY *= ratio;
+            }
+            
+            // Update handle position
+            joystickHandle.style.left = (baseRect.width / 2 - handleRect.width / 2) + deltaX + 'px';
+            joystickHandle.style.top = (baseRect.height / 2 - handleRect.height / 2) + deltaY + 'px';
+            
+            // Set global joystick values for game.js to use
+            window.joystickDeltaX = deltaX / maxRadius;
+            window.joystickDeltaY = deltaY / maxRadius;
+          }
+        }
+      });
+    </script>
+    
+    <script src="game.js"></script>
   </body>
 </html>

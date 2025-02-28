@@ -1,6 +1,6 @@
-// game.js - Castro's Revolution FPS Game
+// Castro's Revolution FPS Game - game.js
 
-// Vector classes for 3D mathematics
+// Vector classes for mathematics
 class Vector2 {
   constructor(x, y) {
     this.x = x || 0;
@@ -27,6 +27,10 @@ class Vector2 {
     const mag = this.magnitude();
     if (mag === 0) return new Vector2();
     return new Vector2(this.x / mag, this.y / mag);
+  }
+  
+  dot(v) {
+    return this.x * v.x + this.y * v.y;
   }
 }
 
@@ -72,7 +76,7 @@ class Vector3 {
   }
 }
 
-// Game Controller for handling inputs (keyboard, mouse, touch)
+// Game Controller for handling inputs (keyboard, mouse, touch, joystick)
 class GameController {
   constructor() {
     this.keys = {};
@@ -90,6 +94,10 @@ class GameController {
     this.shootPressed = false;
     this.jumpPressed = false;
     
+    // Joystick state
+    this.joystickActive = false;
+    this.joystickVector = new Vector2(0, 0);
+    
     // Mobile detection
     this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
@@ -99,6 +107,7 @@ class GameController {
     
     if (this.isMobile) {
       this.setupMobileControls();
+      this.setupJoystickControls();
     }
   }
   
@@ -146,107 +155,141 @@ class GameController {
     const shootBtn = document.getElementById('shootButton');
     const jumpBtn = document.getElementById('jumpButton');
     
-    // Movement: Up
-    moveUp.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      this.upPressed = true;
-    });
-    moveUp.addEventListener('touchend', (e) => {
-      e.preventDefault();
-      this.upPressed = false;
-    });
+    if (moveUp) {
+      // Movement: Up
+      moveUp.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        this.upPressed = true;
+      });
+      moveUp.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        this.upPressed = false;
+      });
+    }
     
-    // Movement: Down
-    moveDown.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      this.downPressed = true;
-    });
-    moveDown.addEventListener('touchend', (e) => {
-      e.preventDefault();
-      this.downPressed = false;
-    });
+    if (moveDown) {
+      // Movement: Down
+      moveDown.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        this.downPressed = true;
+      });
+      moveDown.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        this.downPressed = false;
+      });
+    }
     
-    // Movement: Left
-    moveLeft.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      this.leftPressed = true;
-    });
-    moveLeft.addEventListener('touchend', (e) => {
-      e.preventDefault();
-      this.leftPressed = false;
-    });
+    if (moveLeft) {
+      // Movement: Left
+      moveLeft.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        this.leftPressed = true;
+      });
+      moveLeft.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        this.leftPressed = false;
+      });
+    }
     
-    // Movement: Right
-    moveRight.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      this.rightPressed = true;
-    });
-    moveRight.addEventListener('touchend', (e) => {
-      e.preventDefault();
-      this.rightPressed = false;
-    });
+    if (moveRight) {
+      // Movement: Right
+      moveRight.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        this.rightPressed = true;
+      });
+      moveRight.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        this.rightPressed = false;
+      });
+    }
     
-    // Action: Shoot
-    shootBtn.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      this.shootPressed = true;
-    });
-    shootBtn.addEventListener('touchend', (e) => {
-      e.preventDefault();
-      this.shootPressed = false;
-    });
+    if (shootBtn) {
+      // Action: Shoot
+      shootBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        this.shootPressed = true;
+      });
+      shootBtn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        this.shootPressed = false;
+      });
+    }
     
-    // Action: Jump
-    jumpBtn.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      this.jumpPressed = true;
-    });
-    jumpBtn.addEventListener('touchend', (e) => {
-      e.preventDefault();
-      this.jumpPressed = false;
-    });
+    if (jumpBtn) {
+      // Action: Jump
+      jumpBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        this.jumpPressed = true;
+      });
+      jumpBtn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        this.jumpPressed = false;
+      });
+    }
     
     // Touch for look controls (right side of screen)
     const canvas = document.getElementById('gameCanvas');
-    let touchStartX = 0;
-    let touchStartY = 0;
-    
-    canvas.addEventListener('touchstart', (e) => {
-      const touch = e.touches[0];
-      // Only use touches on the right half of screen for looking
-      if (touch.clientX > window.innerWidth / 2) {
-        touchStartX = touch.clientX;
-        touchStartY = touch.clientY;
+    if (canvas) {
+      let touchStartX = 0;
+      let touchStartY = 0;
+      
+      canvas.addEventListener('touchstart', (e) => {
+        const touch = e.touches[0];
+        // Only use touches on the right half of screen for looking
+        if (touch.clientX > window.innerWidth / 2) {
+          touchStartX = touch.clientX;
+          touchStartY = touch.clientY;
+        }
+      });
+      
+      canvas.addEventListener('touchmove', (e) => {
+        const touch = e.touches[0];
+        // Only use touches on the right half of screen for looking
+        if (touch.clientX > window.innerWidth / 2) {
+          this.mouseDeltaX = touch.clientX - touchStartX;
+          this.mouseDeltaY = touch.clientY - touchStartY;
+          touchStartX = touch.clientX;
+          touchStartY = touch.clientY;
+        }
+      });
+    }
+  }
+  
+  setupJoystickControls() {
+    // Poll for joystick values that are set via HTML/JS in the joystick code
+    const pollJoystick = () => {
+      if (typeof window.joystickDeltaX !== 'undefined' && typeof window.joystickDeltaY !== 'undefined') {
+        this.joystickVector.x = window.joystickDeltaX || 0;
+        this.joystickVector.y = window.joystickDeltaY || 0;
+        
+        // Determine if joystick is active (moved significantly from center)
+        const joystickMagnitude = Math.sqrt(this.joystickVector.x * this.joystickVector.x + this.joystickVector.y * this.joystickVector.y);
+        this.joystickActive = joystickMagnitude > 0.1; // Threshold to prevent drift
       }
-    });
+      
+      // Continue polling
+      requestAnimationFrame(pollJoystick);
+    };
     
-    canvas.addEventListener('touchmove', (e) => {
-      const touch = e.touches[0];
-      // Only use touches on the right half of screen for looking
-      if (touch.clientX > window.innerWidth / 2) {
-        this.mouseDeltaX = touch.clientX - touchStartX;
-        this.mouseDeltaY = touch.clientY - touchStartY;
-        touchStartX = touch.clientX;
-        touchStartY = touch.clientY;
-      }
-    });
+    // Start polling
+    pollJoystick();
   }
   
   // Input state checkers
   isUpPressed() {
-    return this.keys['KeyW'] || this.upPressed;
+    return this.keys['KeyW'] || this.upPressed || (this.joystickActive && this.joystickVector.y < -0.3);
   }
   
   isDownPressed() {
-    return this.keys['KeyS'] || this.downPressed;
+    return this.keys['KeyS'] || this.downPressed || (this.joystickActive && this.joystickVector.y > 0.3);
   }
   
   isLeftPressed() {
-    return this.keys['KeyA'] || this.leftPressed;
+    return this.keys['KeyA'] || this.leftPressed || (this.joystickActive && this.joystickVector.x < -0.3);
   }
   
   isRightPressed() {
-    return this.keys['KeyD'] || this.rightPressed;
+    return this.keys['KeyD'] || this.rightPressed || (this.joystickActive && this.joystickVector.x > 0.3);
   }
   
   isJumpPressed() {
@@ -255,6 +298,14 @@ class GameController {
   
   isShootPressed() {
     return this.keys['MouseLeft'] || this.shootPressed;
+  }
+  
+  // Get joystick vector (normalized)
+  getJoystickVector() {
+    if (!this.joystickActive) return new Vector2(0, 0);
+    
+    // Return a copy of the joystick vector
+    return new Vector2(this.joystickVector.x, this.joystickVector.y);
   }
   
   // Get look delta and reset it
@@ -661,10 +712,11 @@ class Player {
       Math.cos(this.rotation.y + Math.PI/2)
     );
     
-    // Handle movement
+    // Handle movement - combine keyboard/dpad with joystick input
     let moveDir = new Vector3(0, 0, 0);
     this.isMoving = false;
     
+    // Traditional input (keyboard or d-pad)
     if (controller.isUpPressed()) {
       moveDir = moveDir.add(forward);
       this.isMoving = true;
@@ -682,6 +734,18 @@ class Player {
     
     if (controller.isRightPressed()) {
       moveDir = moveDir.add(right);
+      this.isMoving = true;
+    }
+    
+    // Joystick input - blend with traditional input
+    const joystickVector = controller.getJoystickVector();
+    if (joystickVector.magnitude() > 0) {
+      // Calculate movement direction based on joystick input
+      const joystickForward = forward.multiply(joystickVector.y * -1); // Invert Y for intuitive controls
+      const joystickRight = right.multiply(joystickVector.x);
+      
+      // Add joystick movement
+      moveDir = moveDir.add(joystickForward).add(joystickRight);
       this.isMoving = true;
     }
     
@@ -1123,150 +1187,6 @@ class Game {
 
 // Initialize the game when the DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-  // Create mobile controls if they don't exist
-  if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-    createMobileControls();
-  }
-  
   // Start the game
   window.game = new Game();
 });
-
-// Helper function to create mobile control buttons
-function createMobileControls() {
-  // Check if controls already exist
-  if (document.getElementById('mobileControls')) return;
-  
-  const controlsContainer = document.createElement('div');
-  controlsContainer.id = 'mobileControls';
-  controlsContainer.style.position = 'absolute';
-  controlsContainer.style.bottom = '20px';
-  controlsContainer.style.left = '20px';
-  controlsContainer.style.zIndex = '100';
-  controlsContainer.style.userSelect = 'none';
-  
-  // Movement controls
-  const dpad = document.createElement('div');
-  dpad.style.position = 'absolute';
-  dpad.style.bottom = '120px';
-  dpad.style.left = '10px';
-  dpad.style.width = '150px';
-  dpad.style.height = '150px';
-  
-  // Up button
-  const moveUp = document.createElement('div');
-  moveUp.id = 'moveUp';
-  moveUp.textContent = '▲';
-  moveUp.style.position = 'absolute';
-  moveUp.style.top = '0';
-  moveUp.style.left = '50px';
-  moveUp.style.width = '50px';
-  moveUp.style.height = '50px';
-  moveUp.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
-  moveUp.style.borderRadius = '25px';
-  moveUp.style.textAlign = 'center';
-  moveUp.style.lineHeight = '50px';
-  moveUp.style.fontSize = '24px';
-  moveUp.style.color = 'white';
-  
-  // Down button
-  const moveDown = document.createElement('div');
-  moveDown.id = 'moveDown';
-  moveDown.textContent = '▼';
-  moveDown.style.position = 'absolute';
-  moveDown.style.bottom = '0';
-  moveDown.style.left = '50px';
-  moveDown.style.width = '50px';
-  moveDown.style.height = '50px';
-  moveDown.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
-  moveDown.style.borderRadius = '25px';
-  moveDown.style.textAlign = 'center';
-  moveDown.style.lineHeight = '50px';
-  moveDown.style.fontSize = '24px';
-  moveDown.style.color = 'white';
-  
-  // Left button
-  const moveLeft = document.createElement('div');
-  moveLeft.id = 'moveLeft';
-  moveLeft.textContent = '◀';
-  moveLeft.style.position = 'absolute';
-  moveLeft.style.top = '50px';
-  moveLeft.style.left = '0';
-  moveLeft.style.width = '50px';
-  moveLeft.style.height = '50px';
-  moveLeft.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
-  moveLeft.style.borderRadius = '25px';
-  moveLeft.style.textAlign = 'center';
-  moveLeft.style.lineHeight = '50px';
-  moveLeft.style.fontSize = '24px';
-  moveLeft.style.color = 'white';
-  
-  // Right button
-  const moveRight = document.createElement('div');
-  moveRight.id = 'moveRight';
-  moveRight.textContent = '▶';
-  moveRight.style.position = 'absolute';
-  moveRight.style.top = '50px';
-  moveRight.style.right = '0';
-  moveRight.style.width = '50px';
-  moveRight.style.height = '50px';
-  moveRight.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
-  moveRight.style.borderRadius = '25px';
-  moveRight.style.textAlign = 'center';
-  moveRight.style.lineHeight = '50px';
-  moveRight.style.fontSize = '24px';
-  moveRight.style.color = 'white';
-  
-  // Action buttons container
-  const actionButtons = document.createElement('div');
-  actionButtons.style.position = 'absolute';
-  actionButtons.style.bottom = '20px';
-  actionButtons.style.right = '20px';
-  
-  // Shoot button
-  const shootButton = document.createElement('div');
-  shootButton.id = 'shootButton';
-  shootButton.textContent = '🔫';
-  shootButton.style.width = '70px';
-  shootButton.style.height = '70px';
-  shootButton.style.backgroundColor = 'rgba(255, 0, 0, 0.4)';
-  shootButton.style.borderRadius = '35px';
-  shootButton.style.textAlign = 'center';
-  shootButton.style.lineHeight = '70px';
-  shootButton.style.fontSize = '30px';
-  shootButton.style.marginBottom = '10px';
-  
-  // Jump button
-  const jumpButton = document.createElement('div');
-  jumpButton.id = 'jumpButton';
-  jumpButton.textContent = '↑';
-  jumpButton.style.width = '70px';
-  jumpButton.style.height = '70px';
-  jumpButton.style.backgroundColor = 'rgba(0, 255, 0, 0.4)';
-  jumpButton.style.borderRadius = '35px';
-  jumpButton.style.textAlign = 'center';
-  jumpButton.style.lineHeight = '70px';
-  jumpButton.style.fontSize = '30px';
-  
-  // Assemble controls
-  dpad.appendChild(moveUp);
-  dpad.appendChild(moveDown);
-  dpad.appendChild(moveLeft);
-  dpad.appendChild(moveRight);
-  
-  actionButtons.appendChild(shootButton);
-  actionButtons.appendChild(jumpButton);
-  
-  controlsContainer.appendChild(dpad);
-  document.body.appendChild(controlsContainer);
-  document.body.appendChild(actionButtons);
-  
-  // Prevent default touch behavior to avoid zooming and scrolling
-  document.addEventListener('touchmove', (e) => {
-    if (e.target.id === 'gameCanvas' || 
-        e.target.closest('#mobileControls') || 
-        e.target.closest('#actionButtons')) {
-      e.preventDefault();
-    }
-  }, { passive: false });
-}

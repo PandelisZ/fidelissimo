@@ -60,12 +60,73 @@
       #loading p {
         font-size: 18px;
       }
+      #joystickContainer {
+        position: absolute;
+        bottom: 120px;
+        left: 50px;
+        width: 150px;
+        height: 150px;
+        z-index: 100;
+        touch-action: none;
+      }
+      #joystickBase {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        user-select: none;
+      }
+      #joystickHandle {
+        position: absolute;
+        width: 50px;
+        height: 50px;
+        background-color: rgba(255, 255, 255, 0.5);
+        border-radius: 50%;
+        user-select: none;
+      }
+      #mobileControls {
+        display: none;
+      }
+      #actionButtons {
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        z-index: 100;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      #shootButton, #jumpButton {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        text-align: center;
+        line-height: 70px;
+        font-size: 30px;
+        margin-bottom: 10px;
+        user-select: none;
+      }
+      #shootButton {
+        background-color: rgba(255, 0, 0, 0.4);
+      }
+      #jumpButton {
+        background-color: rgba(0, 255, 0, 0.4);
+      }
+      @media only screen and (max-width: 768px) {
+        #mobileControls {
+          display: block;
+        }
+      }
     </style>
   </head>
   <body>
     <div id="loading">
       <h1>Castro's Revolution</h1>
-      <p>Loading game assets...</p>
+      <p>Loading game assets... <span id="loadingProgress">0%</span></p>
     </div>
     <canvas id="gameCanvas"></canvas>
     <div id="crosshair">+</div>
@@ -74,218 +135,114 @@
       <div id="ammo">Ammo: 30</div>
     </div>
     
+    <div id="mobileControls">
+      <div id="joystickContainer">
+        <div id="joystickBase">
+          <div id="joystickHandle"></div>
+        </div>
+      </div>
+      <div id="moveUp">▲</div>
+      <div id="moveDown">▼</div>
+      <div id="moveLeft">◀</div>
+      <div id="moveRight">▶</div>
+    </div>
+    
+    <div id="actionButtons">
+      <div id="shootButton">🔫</div>
+      <div id="jumpButton">↑</div>
+    </div>
+    
     <script>
-      // Game engine
-      document.addEventListener('DOMContentLoaded', () => {
-        // Constants
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const loadingScreen = document.getElementById('loading');
-        
-        // Resize canvas to full window
-        function resizeCanvas() {
-          canvas.width = window.innerWidth;
-          canvas.height = window.innerHeight;
+      // Check if mobile and display controls
+      document.addEventListener('DOMContentLoaded', function() {
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if (isMobile) {
+          document.getElementById('mobileControls').style.display = 'block';
+          setupJoystick();
         }
-        
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
-        
-        // Lock pointer for FPS controls
-        canvas.addEventListener('click', () => {
-          canvas.requestPointerLock = canvas.requestPointerLock || canvas.mozRequestPointerLock;
-          canvas.requestPointerLock();
-        });
-        
-        // Game state
-        const game = {
-          player: {
-            x: 0,
-            y: 0,
-            z: 0,
-            rotX: 0,
-            rotY: 0,
-            speed: 0.1,
-            health: 100,
-            ammo: 30
-          },
-          keys: {},
-          enemies: [],
-          map: [],
-          textures: {},
-          isLoading: true
-        };
-        
-        // Input handling
-        document.addEventListener('keydown', (e) => game.keys[e.code] = true);
-        document.addEventListener('keyup', (e) => game.keys[e.code] = false);
-        document.addEventListener('mousemove', (e) => {
-          if (document.pointerLockElement === canvas) {
-            game.player.rotY += e.movementX * 0.002;
-            game.player.rotX = Math.max(-Math.PI/2, Math.min(Math.PI/2, game.player.rotX - e.movementY * 0.002));
-          }
-        });
-        
-        // Create 3D world
-        function initWorld() {
-          // Simple cubic world similar to Minecraft
-          for(let x = -10; x < 10; x++) {
-            for(let z = -10; z < 10; z++) {
-              if(Math.random() < 0.1) {
-                game.map.push({
-                  x: x,
-                  y: 0,
-                  z: z,
-                  type: 'wall'
-                });
-              }
-            }
-          }
+
+        // Initialize joystick functionality
+        function setupJoystick() {
+          const joystickBase = document.getElementById('joystickBase');
+          const joystickHandle = document.getElementById('joystickHandle');
+          let isDragging = false;
+          let startX, startY, currentX, currentY;
           
-          // Add enemies
-          for(let i = 0; i < 5; i++) {
-            game.enemies.push({
-              x: Math.random() * 20 - 10,
-              y: 0,
-              z: Math.random() * 20 - 10,
-              health: 100,
-              state: 'patrol'
-            });
-          }
+          // Center the handle initially
+          const baseRect = joystickBase.getBoundingClientRect();
+          const handleRect = joystickHandle.getBoundingClientRect();
           
-          // Position player
-          game.player.x = 0;
-          game.player.y = 1.7; // Eye height
-          game.player.z = 0;
+          joystickHandle.style.left = (baseRect.width - handleRect.width) / 2 + 'px';
+          joystickHandle.style.top = (baseRect.height - handleRect.height) / 2 + 'px';
           
-          // Loading complete
-          game.isLoading = false;
-          loadingScreen.style.display = 'none';
-        }
-        
-        // Move player based on input
-        function handleMovement() {
-          const forward = new Vector3(
-            Math.sin(game.player.rotY),
-            0,
-            Math.cos(game.player.rotY)
-          );
-          const right = new Vector3(
-            Math.sin(game.player.rotY + Math.PI/2),
-            0,
-            Math.cos(game.player.rotY + Math.PI/2)
-          );
-          
-          if (game.keys['KeyW']) {
-            game.player.x += forward.x * game.player.speed;
-            game.player.z += forward.z * game.player.speed;
-          }
-          if (game.keys['KeyS']) {
-            game.player.x -= forward.x * game.player.speed;
-            game.player.z -= forward.z * game.player.speed;
-          }
-          if (game.keys['KeyA']) {
-            game.player.x -= right.x * game.player.speed;
-            game.player.z -= right.z * game.player.speed;
-          }
-          if (game.keys['KeyD']) {
-            game.player.x += right.x * game.player.speed;
-            game.player.z += right.z * game.player.speed;
-          }
-          if (game.keys['Space']) {
-            // Jump logic would go here
-          }
-        }
-        
-        // Render the scene
-        function render() {
-          // Clear canvas
-          ctx.fillStyle = '#87CEEB'; // Sky color
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          
-          // Draw floor
-          ctx.fillStyle = '#8B4513'; // Brown
-          ctx.fillRect(0, canvas.height/2, canvas.width, canvas.height/2);
-          
-          // Render world objects using raycasting
-          for (let x = 0; x < canvas.width; x++) {
-            const rayDirX = Math.sin(game.player.rotY) + (2 * x / canvas.width - 1) * Math.cos(game.player.rotY);
-            const rayDirZ = Math.cos(game.player.rotY) - (2 * x / canvas.width - 1) * Math.sin(game.player.rotY);
+          // Touch start
+          joystickBase.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = joystickBase.getBoundingClientRect();
             
-            // Simple column rendering for walls
-            let hit = false;
-            let distance = 0;
+            startX = rect.left + rect.width / 2;
+            startY = rect.top + rect.height / 2;
+            currentX = touch.clientX;
+            currentY = touch.clientY;
             
-            while (!hit && distance < 20) {
-              distance += 0.1;
-              const testX = game.player.x + rayDirX * distance;
-              const testZ = game.player.z + rayDirZ * distance;
-              
-              // Check if ray hit a wall
-              for (const wall of game.map) {
-                if (testX > wall.x - 0.5 && testX < wall.x + 0.5 &&
-                    testZ > wall.z - 0.5 && testZ < wall.z + 0.5) {
-                  hit = true;
-                  break;
-                }
-              }
+            isDragging = true;
+            updateJoystickPosition();
+          });
+          
+          // Touch move
+          document.addEventListener('touchmove', function(e) {
+            if (!isDragging) return;
+            e.preventDefault();
+            
+            const touch = e.touches[0];
+            currentX = touch.clientX;
+            currentY = touch.clientY;
+            
+            updateJoystickPosition();
+          }, { passive: false });
+          
+          // Touch end
+          document.addEventListener('touchend', function(e) {
+            if (!isDragging) return;
+            isDragging = false;
+            
+            // Reset handle position
+            joystickHandle.style.left = (baseRect.width - handleRect.width) / 2 + 'px';
+            joystickHandle.style.top = (baseRect.height - handleRect.height) / 2 + 'px';
+            
+            // Reset movement values
+            window.joystickDeltaX = 0;
+            window.joystickDeltaY = 0;
+          });
+          
+          function updateJoystickPosition() {
+            // Calculate distance from center
+            let deltaX = currentX - startX;
+            let deltaY = currentY - startY;
+            
+            // Limit to joystick radius
+            const maxRadius = baseRect.width / 2 - handleRect.width / 2;
+            const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+            
+            if (distance > maxRadius) {
+              const ratio = maxRadius / distance;
+              deltaX *= ratio;
+              deltaY *= ratio;
             }
             
-            if (hit) {
-              // Calculate wall height based on distance
-              const wallHeight = canvas.height / distance * 0.5;
-              ctx.fillStyle = `rgba(0, 128, 0, ${1 - distance/20})`;
-              ctx.fillRect(x, canvas.height/2 - wallHeight/2, 1, wallHeight);
-            }
-          }
-          
-          // Render enemies
-          for (const enemy of game.enemies) {
-            // Calculate direction to enemy
-            const dx = enemy.x - game.player.x;
-            const dz = enemy.z - game.player.z;
-            const distance = Math.sqrt(dx*dx + dz*dz);
+            // Update handle position
+            joystickHandle.style.left = (baseRect.width / 2 - handleRect.width / 2) + deltaX + 'px';
+            joystickHandle.style.top = (baseRect.height / 2 - handleRect.height / 2) + deltaY + 'px';
             
-            // Only render if in front of player
-            const angle = Math.atan2(dx, dz) - game.player.rotY;
-            if (Math.abs(angle) < Math.PI/4 && distance < 10) {
-              // Convert 3D position to screen position
-              const screenX = canvas.width/2 + (Math.tan(angle) * canvas.width);
-              const size = canvas.height / distance * 1.2;
-              
-              // Draw enemy sprite (placeholder rectangle)
-              ctx.fillStyle = 'red';
-              ctx.fillRect(screenX - size/2, canvas.height/2 - size, size, size * 2);
-            }
-          }
-          
-          // Update UI
-          document.getElementById('health').textContent = `Health: ${game.player.health}`;
-          document.getElementById('ammo').textContent = `Ammo: ${game.player.ammo}`;
-        }
-        
-        // Simple vector class
-        class Vector3 {
-          constructor(x, y, z) {
-            this.x = x || 0;
-            this.y = y || 0;
-            this.z = z || 0;
+            // Set global joystick values for game.js to use
+            window.joystickDeltaX = deltaX / maxRadius;
+            window.joystickDeltaY = deltaY / maxRadius;
           }
         }
-        
-        // Main game loop
-        function gameLoop() {
-          if (!game.isLoading) {
-            handleMovement();
-            render();
-          }
-          requestAnimationFrame(gameLoop);
-        }
-        
-        // Start the game
-        initWorld();
-        gameLoop();
       });
     </script>
+    
+    <script src="game.js"></script>
   </body>
 </html>
